@@ -1,0 +1,49 @@
+{
+    "_comment": "Shared by tests/Unit/FormulaTest.php and tests/js/formula.test.mjs.",
+    "eval": [
+        { "f": "1 + 2 * 3", "vars": {}, "result": 7, "explain": "1 + 2 × 3" },
+        { "f": "(1 + 2) * 3", "vars": {}, "result": 9, "explain": "(1 + 2) × 3" },
+        { "f": "10 - 4 - 3", "vars": {}, "result": 3, "explain": "10 - 4 - 3" },
+        { "f": "2 ^ 3 ^ 2", "vars": {}, "result": 512, "explain": "2 ^ 3 ^ 2" },
+        { "f": "-2 ^ 2", "vars": {}, "result": -4, "explain": "-2 ^ 2" },
+        { "f": "7 / 2", "vars": {}, "result": 3.5, "explain": "7 ÷ 2" },
+        { "f": "seats * seat_sqft + backs * back_sqft + arms * arm_sqft + cushions * cushion_sqft + chaise * chaise_sqft",
+          "vars": { "seats": 3, "seat_sqft": 4.5, "backs": 2, "back_sqft": 5, "arms": 2, "arm_sqft": 6, "cushions": 2, "cushion_sqft": 2, "chaise": 0, "chaise_sqft": 10 },
+          "result": 39.5, "explain": "3 × 4.5 + 2 × 5 + 2 × 6 + 2 × 2" },
+        { "f": "a + b", "vars": { "a": 0, "b": 0 }, "result": 0, "explain": "0" },
+        { "f": "max(0, height * width - openings)", "vars": { "height": 10, "width": 12, "openings": 21 }, "result": 99, "explain": "max(0, 10 × 12 - 21)" },
+        { "f": "area * rate * if(area > 500, 0.9, 1)", "vars": { "area": 600, "rate": 12 }, "result": 6480, "explain": "600 × 12 × if(600 > 500, 0.9, 1)" },
+        { "f": "if(w > 0, a / w, 0)", "vars": { "w": 0, "a": 5 }, "result": 0, "explain": "if(0 > 0, 5 ÷ 0, 0)" },
+        { "f": "round(10 / 3, 2)", "vars": {}, "result": 3.33, "explain": "round(10 ÷ 3, 2)" },
+        { "f": "round(1.005, 2)", "vars": {}, "result": 1.01, "explain": "round(1.005, 2)" },
+        { "f": "round(2.5) + round(-2.5)", "vars": {}, "result": 0, "explain": "round(2.5) + round(-2.5)" },
+        { "f": "ceil(panels / 2) + floor(7.9)", "vars": { "panels": 3 }, "result": 9, "explain": "ceil(3 ÷ 2) + floor(7.9)" },
+        { "f": "ceil(0.1 * 3 * 10)", "vars": {}, "result": 3, "explain": "ceil(0.1 × 3 × 10)" },
+        { "f": "min(4, 2, 9) + abs(-3) + sqrt(16)", "vars": {}, "result": 9, "explain": "min(4, 2, 9) + abs(-3) + sqrt(16)" },
+        { "f": "(a >= 2 && b < 1) || !c", "vars": { "a": 2, "b": 0.5, "c": 1 }, "result": 1, "explain": "(2 >= 2 && 0.5 < 1) || not 1" },
+        { "f": "a == 0.3", "vars": { "a": 0.30000000000000004 }, "result": 1, "explain": "0.3 == 0.3" },
+        { "f": "length * width * sides", "vars": { "length": 6.561679790026246, "width": 4.921259842519685, "sides": 1 }, "result": 32.29173125, "explain": "6.5617 × 4.9213 × 1" },
+        { "f": ".5 + 3.", "vars": {}, "result": 3.5, "explain": "0.5 + 3" }
+    ],
+    "explain_display": [
+        { "f": "area * rate * material * design", "vars": { "area": 39.5, "rate": 24, "material": 1.2, "design": 1.25 },
+          "display": { "rate": "(18 + 6)" }, "explain": "39.5 × (18 + 6) × 1.2 × 1.25" }
+    ],
+    "variables": [
+        { "f": "seats * seat_sqft + max(arms, 0) * seat_sqft", "vars": ["arms", "seat_sqft", "seats"] },
+        { "f": "if(area > 500, 0.9, 1) * area", "vars": ["area"] }
+    ],
+    "errors": [
+        { "f": "", "error": "Formula is empty." },
+        { "f": "1 +", "error": "Formula ends unexpectedly." },
+        { "f": "(1 + 2", "error": "Expected \")\" at the end." },
+        { "f": "1 2", "error": "Unexpected \"2\"." },
+        { "f": "foo(1)", "error": "Unknown function \"foo\"." },
+        { "f": "if(1, 2)", "error": "Wrong number of arguments for if()." },
+        { "f": "a * 2", "vars": {}, "error": "Unknown variable \"a\"." },
+        { "f": "4 / (2 - 2)", "vars": {}, "error": "Division by zero." },
+        { "f": "1 # 2", "error": "Unexpected character \"#\"." },
+        { "f": "sqrt(-1)", "vars": {}, "error": "Square root of a negative number." },
+        { "f": "10 ^ 400", "vars": {}, "error": "Result is too large." }
+    ]
+}

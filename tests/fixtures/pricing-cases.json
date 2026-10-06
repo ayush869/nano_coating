@@ -1,0 +1,270 @@
+{
+    "_comment": "Shared by tests/Unit/PricingServiceTest.php and tests/js/pricing.test.mjs. Line cases use a product from 'products'; quote cases reference line cases by name. Expected values are hand-calculated.",
+    "rules": { "gst_pct": 18, "min_item": 500, "min_job": 2500 },
+
+    "products": {
+        "sofa": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": null,
+            "fields": [
+                { "key": "seats", "label": "Seats", "type": "counter", "default": 3 },
+                { "key": "backs", "label": "Back sections", "type": "counter", "default": 3 },
+                { "key": "arms", "label": "Armrests", "type": "counter", "default": 2 },
+                { "key": "cushions", "label": "Loose cushions", "type": "counter", "default": 0 },
+                { "key": "chaise", "label": "Chaise", "type": "counter", "default": 0 },
+                { "key": "ottomans", "label": "Ottomans", "type": "counter", "default": 0 }
+            ],
+            "constants": [
+                { "key": "seat_sqft", "label": "Seat", "value": 4.5 },
+                { "key": "back_sqft", "label": "Back section", "value": 5 },
+                { "key": "arm_sqft", "label": "Armrest", "value": 6 },
+                { "key": "cushion_sqft", "label": "Cushion", "value": 2 },
+                { "key": "chaise_sqft", "label": "Chaise", "value": 10 },
+                { "key": "ottoman_sqft", "label": "Ottoman", "value": 6 }
+            ],
+            "area_formula": "seats * seat_sqft + backs * back_sqft + arms * arm_sqft + cushions * cushion_sqft + chaise * chaise_sqft + ottomans * ottoman_sqft",
+            "price_formula": "area * rate * material * design"
+        },
+        "glass_top": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": null,
+            "fields": [
+                { "key": "length", "label": "Length", "type": "dimension", "unit": "ft", "default": 0 },
+                { "key": "width", "label": "Width", "type": "dimension", "unit": "ft", "default": 0 },
+                { "key": "sides", "label": "Sides", "type": "select", "default": 1,
+                  "options": [{ "label": "One side", "value": 1 }, { "label": "Both sides", "value": 2 }] }
+            ],
+            "constants": [],
+            "area_formula": "length * width * sides",
+            "price_formula": "area * rate * material * design"
+        },
+        "dining_chair": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": null,
+            "fields": [], "constants": [{ "key": "chair_sqft", "label": "Chair area", "value": 6 }],
+            "area_formula": "chair_sqft", "price_formula": "area * rate * material * design"
+        },
+        "curved_chair": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": null,
+            "fields": [{ "key": "size", "label": "Size", "type": "select", "default": 12,
+                "options": [{ "label": "Small", "value": 8 }, { "label": "Medium", "value": 12 }, { "label": "Large", "value": 16 }] }],
+            "constants": [], "area_formula": "size", "price_formula": "area * rate * material * design"
+        },
+        "glass_edge": {
+            "measure_unit": "rft", "uses_coating": false, "base_rate": 15, "apply_min": false, "min_charge": null,
+            "fields": [{ "key": "length", "label": "Edge length (rft)", "type": "number", "default": 0 }],
+            "constants": [], "area_formula": "length", "price_formula": "area * rate"
+        },
+        "wall": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": null,
+            "fields": [
+                { "key": "height", "label": "Height", "type": "dimension", "unit": "ft", "default": 10 },
+                { "key": "width", "label": "Width", "type": "dimension", "unit": "ft", "default": 0 },
+                { "key": "openings", "label": "Doors & windows (sq ft)", "type": "number", "default": 0 }
+            ],
+            "constants": [],
+            "area_formula": "max(0, height * width - openings)",
+            "price_formula": "area * rate * material * design * if(area > 500, 0.9, 1)"
+        },
+        "pillow": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": 150,
+            "fields": [], "constants": [{ "key": "pillow_sqft", "label": "Pillow", "value": 3 }],
+            "area_formula": "pillow_sqft", "price_formula": "area * rate * material * design"
+        },
+        "broken": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": null,
+            "fields": [{ "key": "length", "label": "L", "type": "number", "default": 4 }, { "key": "width", "label": "W", "type": "number", "default": 0 }],
+            "constants": [], "area_formula": "length / width", "price_formula": "area * rate"
+        },
+        "tiny": {
+            "measure_unit": "sq ft", "uses_coating": true, "base_rate": 0, "apply_min": true, "min_charge": null,
+            "fields": [], "constants": [{ "key": "a", "label": "A", "value": 1.005 }],
+            "area_formula": "a", "price_formula": "area * rate * material * design"
+        }
+    },
+
+    "line_cases": [
+        {
+            "name": "worked sofa example",
+            "product": "sofa",
+            "line": { "qty": 1, "inputs": { "seats": 3, "backs": 2, "arms": 2, "cushions": 2, "chaise": 0, "ottomans": 0 },
+                      "coating_rate": 18, "addon_rate": 6, "material_factor": 1.2, "design_factor": 1.25 },
+            "expected": { "area": 39.5, "raw_amount": 1422, "min_applied": false, "amount": 1422, "error": null,
+                          "area_text": "3 × 4.5 + 2 × 5 + 2 × 6 + 2 × 2 = 39.5 sq ft",
+                          "formula": "39.5 × (18 + 6) × 1.2 × 1.25 × 1 = ₹1,422.00" }
+        },
+        {
+            "name": "full 3-seater sofa (3-seat back) prices differently",
+            "product": "sofa",
+            "line": { "qty": 1, "inputs": { "seats": 3, "backs": 3, "arms": 2, "cushions": 2 },
+                      "coating_rate": 18, "addon_rate": 6, "material_factor": 1.2, "design_factor": 1.25 },
+            "expected": { "area": 44.5, "raw_amount": 1602, "min_applied": false, "amount": 1602, "error": null,
+                          "area_text": "3 × 4.5 + 3 × 5 + 2 × 6 + 2 × 2 = 44.5 sq ft",
+                          "formula": "44.5 × (18 + 6) × 1.2 × 1.25 × 1 = ₹1,602.00" }
+        },
+        {
+            "name": "sofa with no inputs uses field defaults",
+            "product": "sofa",
+            "line": { "qty": 1, "inputs": {}, "coating_rate": 18, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 40.5, "raw_amount": 729, "min_applied": false, "amount": 729, "error": null,
+                          "area_text": "3 × 4.5 + 3 × 5 + 2 × 6 = 40.5 sq ft",
+                          "formula": "40.5 × 18 × 1 × 1 × 1 = ₹729.00" }
+        },
+        {
+            "name": "glass top in feet hits minimum item charge",
+            "product": "glass_top",
+            "line": { "qty": 1, "inputs": { "length": 6, "width": 3, "sides": 1 }, "coating_rate": 20, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 18, "raw_amount": 360, "min_applied": true, "amount": 500, "error": null,
+                          "area_text": "6 ft × 3 ft × 1 = 18 sq ft",
+                          "formula": "18 × 20 × 1 × 1 × 1 = ₹360.00, raised to minimum item charge ₹500.00" }
+        },
+        {
+            "name": "marble top in inches, both sides",
+            "product": "glass_top",
+            "line": { "qty": 1, "inputs": { "length": 72, "length__unit": "in", "width": 36, "width__unit": "in", "sides": 2 },
+                      "coating_rate": 28, "addon_rate": 0, "material_factor": 1.1, "design_factor": 1 },
+            "expected": { "area": 36, "raw_amount": 1108.8, "min_applied": false, "amount": 1108.8, "error": null,
+                          "area_text": "72 in × 36 in × 2 = 36 sq ft",
+                          "formula": "36 × 28 × 1.1 × 1 × 1 = ₹1,108.80" }
+        },
+        {
+            "name": "rug in metres",
+            "product": "glass_top",
+            "line": { "qty": 1, "inputs": { "length": 2, "length__unit": "m", "width": 1.5, "width__unit": "m" },
+                      "coating_rate": 18, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 32.29173125, "raw_amount": 581.25, "min_applied": false, "amount": 581.25, "error": null,
+                          "area_text": "2 m × 1.5 m × 1 = 32.29 sq ft",
+                          "formula": "32.2917 × 18 × 1 × 1 × 1 = ₹581.25" }
+        },
+        {
+            "name": "wood panel in centimetres hits minimum",
+            "product": "glass_top",
+            "line": { "qty": 1, "inputs": { "length": 120, "length__unit": "cm", "width": 60, "width__unit": "cm", "sides": 1 },
+                      "coating_rate": 22, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 7.7500155, "raw_amount": 170.5, "min_applied": true, "amount": 500, "error": null,
+                          "area_text": "120 cm × 60 cm × 1 = 7.75 sq ft",
+                          "formula": "7.75 × 22 × 1 × 1 × 1 = ₹170.50, raised to minimum item charge ₹500.00" }
+        },
+        {
+            "name": "six velvet dining chairs",
+            "product": "dining_chair",
+            "line": { "qty": 6, "inputs": {}, "coating_rate": 18, "addon_rate": 0, "material_factor": 1.2, "design_factor": 1 },
+            "expected": { "area": 6, "raw_amount": 777.6, "min_applied": false, "amount": 777.6, "error": null,
+                          "area_text": "6 sq ft",
+                          "formula": "6 × 18 × 1.2 × 1 × 6 = ₹777.60" }
+        },
+        {
+            "name": "two large curved chairs",
+            "product": "curved_chair",
+            "line": { "qty": 2, "inputs": { "size": 16 }, "coating_rate": 18, "addon_rate": 0, "material_factor": 1, "design_factor": 1.15 },
+            "expected": { "area": 16, "raw_amount": 662.4, "min_applied": false, "amount": 662.4, "error": null,
+                          "area_text": "16 sq ft",
+                          "formula": "16 × 18 × 1 × 1.15 × 2 = ₹662.40" }
+        },
+        {
+            "name": "running feet: glass edges (no coating, no minimum)",
+            "product": "glass_edge",
+            "line": { "qty": 2, "inputs": { "length": 12 } },
+            "expected": { "area": 12, "raw_amount": 360, "min_applied": false, "amount": 360, "error": null,
+                          "area_text": "12 rft",
+                          "formula": "12 × 15 × 2 = ₹360.00" }
+        },
+        {
+            "name": "wall with openings and a custom volume discount",
+            "product": "wall",
+            "line": { "qty": 1, "inputs": { "height": 10, "width": 60, "openings": 40 }, "coating_rate": 12, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 560, "raw_amount": 6048, "min_applied": false, "amount": 6048, "error": null,
+                          "area_text": "max(0, 10 ft × 60 ft - 40) = 560 sq ft",
+                          "formula": "560 × 12 × 1 × 1 × if(560 > 500, 0.9, 1) × 1 = ₹6,048.00" }
+        },
+        {
+            "name": "wall area never goes below zero",
+            "product": "wall",
+            "line": { "qty": 1, "inputs": { "height": 3, "width": 3, "openings": 20 }, "coating_rate": 12, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 0, "raw_amount": 0, "min_applied": false, "amount": 0, "error": null,
+                          "area_text": "max(0, 3 ft × 3 ft - 20) = 0 sq ft",
+                          "formula": "0 × 12 × 1 × 1 × if(0 > 500, 0.9, 1) × 1 = ₹0.00" }
+        },
+        {
+            "name": "product-specific minimum charge",
+            "product": "pillow",
+            "line": { "qty": 2, "inputs": {}, "coating_rate": 18, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 3, "raw_amount": 108, "min_applied": true, "amount": 150, "error": null,
+                          "area_text": "3 sq ft",
+                          "formula": "3 × 18 × 1 × 1 × 2 = ₹108.00, raised to minimum item charge ₹150.00" }
+        },
+        {
+            "name": "formula error is reported, not thrown",
+            "product": "broken",
+            "line": { "qty": 1, "inputs": {}, "coating_rate": 18 },
+            "expected": { "area": 0, "raw_amount": 0, "min_applied": false, "amount": 0, "error": "Division by zero.",
+                          "area_text": "", "formula": "" }
+        },
+        {
+            "name": "rounding: 1.005 rounds half up to 1.01",
+            "product": "tiny",
+            "rules": { "gst_pct": 18, "min_item": 0, "min_job": 0 },
+            "line": { "qty": 1, "inputs": {}, "coating_rate": 1, "addon_rate": 0, "material_factor": 1, "design_factor": 1 },
+            "expected": { "area": 1.005, "raw_amount": 1.01, "min_applied": false, "amount": 1.01, "error": null,
+                          "area_text": "1.01 sq ft",
+                          "formula": "1.005 × 1 × 1 × 1 × 1 = ₹1.01" }
+        }
+    ],
+
+    "quote_cases": [
+        {
+            "name": "intra-state (Maharashtra): percent discount, visit charge, CGST + SGST",
+            "lines": ["worked sofa example", "six velvet dining chairs", "running feet: glass edges (no coating, no minimum)"],
+            "options": { "discount_type": "percent", "discount_value": 10, "visit_charge": 300, "intra_state": true },
+            "expected": {
+                "line_amounts": [1422, 777.6, 360],
+                "subtotal": 2559.6, "discount_amount": 255.96, "visit_charge": 300,
+                "taxable_before_min": 2603.64, "min_job_applied": false, "min_job_adjustment": 0,
+                "taxable": 2603.64, "cgst": 234.33, "sgst": 234.33, "igst": 0, "gst_total": 468.66, "total": 3072.3
+            }
+        },
+        {
+            "name": "inter-state: flat discount drops below minimum job, IGST",
+            "lines": ["worked sofa example", "marble top in inches, both sides"],
+            "options": { "discount_type": "flat", "discount_value": 200, "visit_charge": 0, "intra_state": false },
+            "expected": {
+                "line_amounts": [1422, 1108.8],
+                "subtotal": 2530.8, "discount_amount": 200, "visit_charge": 0,
+                "taxable_before_min": 2330.8, "min_job_applied": true, "min_job_adjustment": 169.2,
+                "taxable": 2500, "cgst": 0, "sgst": 0, "igst": 450, "gst_total": 450, "total": 2950
+            }
+        },
+        {
+            "name": "minimum job charge on a small job",
+            "lines": ["glass top in feet hits minimum item charge"],
+            "options": { "discount_type": null, "discount_value": 0, "visit_charge": 300, "intra_state": true },
+            "expected": {
+                "line_amounts": [500],
+                "subtotal": 500, "discount_amount": 0, "visit_charge": 300,
+                "taxable_before_min": 800, "min_job_applied": true, "min_job_adjustment": 1700,
+                "taxable": 2500, "cgst": 225, "sgst": 225, "igst": 0, "gst_total": 450, "total": 2950
+            }
+        },
+        {
+            "name": "discount is clamped to the subtotal",
+            "lines": ["worked sofa example"],
+            "options": { "discount_type": "flat", "discount_value": 99999, "visit_charge": 0, "intra_state": true },
+            "expected": {
+                "line_amounts": [1422],
+                "subtotal": 1422, "discount_amount": 1422, "visit_charge": 0,
+                "taxable_before_min": 0, "min_job_applied": false, "min_job_adjustment": 0,
+                "taxable": 0, "cgst": 0, "sgst": 0, "igst": 0, "gst_total": 0, "total": 0
+            }
+        },
+        {
+            "name": "Indian digit grouping above one lakh",
+            "lines": ["full 3-seater sofa (3-seat back) prices differently"],
+            "line_qty_override": [100],
+            "options": { "discount_type": null, "discount_value": 0, "visit_charge": 0, "intra_state": true },
+            "expected": {
+                "line_amounts": [160200],
+                "subtotal": 160200, "discount_amount": 0, "visit_charge": 0,
+                "taxable_before_min": 160200, "min_job_applied": false, "min_job_adjustment": 0,
+                "taxable": 160200, "cgst": 14418, "sgst": 14418, "igst": 0, "gst_total": 28836, "total": 189036,
+                "money_total": "₹1,89,036.00"
+            }
+        }
+    ]
+}

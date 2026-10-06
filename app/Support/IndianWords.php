@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Support;
+
+/**
+ * "Rupees Three Thousand Six Hundred Eighty Two and Paise Ninety Two Only",
+ * using the Indian system (thousand, lakh, crore).
+ */
+class IndianWords
+{
+    private const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+        'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+
+    private const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+    public static function rupees(float $amount): string
+    {
+        $amount = round($amount, 2);
+        $rupees = (int) floor($amount);
+        $paise = (int) round(($amount - $rupees) * 100);
+
+        $words = 'Rupees '.($rupees === 0 ? 'Zero' : self::number($rupees));
+        if ($paise > 0) {
+            $words .= ' and Paise '.self::number($paise);
+        }
+
+        return $words.' Only';
+    }
+
+    public static function number(int $n): string
+    {
+        $parts = [];
+        foreach ([10000000 => 'Crore', 100000 => 'Lakh', 1000 => 'Thousand', 100 => 'Hundred'] as $size => $name) {
+            if ($n >= $size) {
+                $parts[] = self::number(intdiv($n, $size)).' '.$name;
+                $n %= $size;
+            }
+        }
+        if ($n > 0) {
+            $parts[] = $n < 20 ? self::ONES[$n] : trim(self::TENS[intdiv($n, 10)].' '.self::ONES[$n % 10]);
+        }
+
+        return implode(' ', $parts);
+    }
+}
