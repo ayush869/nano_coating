@@ -36,6 +36,15 @@ class MediaController extends Controller
         $request->validate(['photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:12288']]);
 
         $file = $request->file('photo');
+
+        // Without the GD extension, keep the upload as it is instead of failing.
+        if (! function_exists('imagecreatefromstring')) {
+            abort_unless(@getimagesize($file->getRealPath()), 422, 'That file is not a readable image.');
+            $path = $file->storeAs('photos', Str::random(32).'.'.$file->guessExtension(), 'public');
+
+            return response()->json(['path' => $path, 'url' => Media::url($path)]);
+        }
+
         $path = 'photos/'.Str::random(32).'.jpg';
         $img = @imagecreatefromstring(file_get_contents($file->getRealPath()));
         abort_unless($img, 422, 'That file is not a readable image.');
@@ -47,7 +56,6 @@ class MediaController extends Controller
         ob_start();
         imagejpeg($img, null, 82);
         Storage::disk('public')->put($path, ob_get_clean());
-        imagedestroy($img);
 
         return response()->json(['path' => $path, 'url' => Media::url($path)]);
     }

@@ -10,6 +10,7 @@ use App\Models\Service;
 use App\Services\Catalog\ProductDefinition;
 use App\Services\Catalog\ProductTemplates as T;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -192,10 +193,24 @@ class CatalogSeeder extends Seeder
             ]],
         ];
 
+        // Stock photos shipped in database/seeders/images (Unsplash licence).
+        // Admins can replace any of them in Admin → Services / Products.
+        $productImages = [
+            'Sofa (build by parts)' => 'p-sofa', 'Recliner sofa (per seat)' => 'p-recliner', 'Dining chair' => 'p-dining-chair',
+            'Curved accent chair' => 'p-accent-chair', 'Office chair' => 'p-office-chair', 'Armchair' => 'p-armchair',
+            'Mattress' => 'p-mattress', 'Headboard' => 'mattress-bedding', 'Pillows & cushions' => 'p-pillows',
+            'Glass table top' => 'p-glass-table', 'Windows & glass partitions' => 'glass', 'Glass edge sealing' => 'p-glass-edge',
+            'Wooden table top' => 'wood', 'Wooden door' => 'p-wood-door', 'Wooden frame / border' => 'p-wood-frame',
+            'Countertop / stone table top' => 'stone-marble', 'Stone floor' => 'p-stone-floor',
+            'Wall coating' => 'p-wall-paint', 'Rug / carpet' => 'curtains-rugs', 'Curtains' => 'p-curtains',
+        ];
+
         $definer = new ProductDefinition;
         foreach ($catalog as $i => [$serviceName, $icon, $summary, $products]) {
+            $slug = Str::slug($serviceName);
             $service = Service::create([
-                'name' => $serviceName, 'slug' => Str::slug($serviceName), 'icon' => $icon, 'summary' => $summary, 'sort' => ($i + 1) * 10,
+                'name' => $serviceName, 'slug' => $slug, 'icon' => $icon, 'summary' => $summary, 'sort' => ($i + 1) * 10,
+                'image_path' => $this->image($slug, 'services'),
             ]);
 
             foreach ($products as $j => $p) {
@@ -224,9 +239,23 @@ class CatalogSeeder extends Seeder
                     'default_material_id' => $dm ? $material($dm) : null,
                     'default_design_id' => $dd ? $design($dd) : null,
                     'sort' => ($j + 1) * 10,
+                    'image_path' => isset($productImages[$p['name']]) ? $this->image($productImages[$p['name']], 'products') : null,
                 ]);
                 $product->coatings()->sync(collect($p['coatings'] ?? [])->map($coating));
             }
         }
+    }
+
+    /** Copy a bundled photo into public storage; null if it is missing. */
+    private function image(string $name, string $dir): ?string
+    {
+        $source = __DIR__.'/images/'.$name.'.jpg';
+        if (! is_file($source)) {
+            return null;
+        }
+        $path = $dir.'/'.$name.'.jpg';
+        Storage::disk('public')->put($path, file_get_contents($source));
+
+        return $path;
     }
 }

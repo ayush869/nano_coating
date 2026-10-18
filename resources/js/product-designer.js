@@ -1,9 +1,9 @@
 import { variables, FormulaError, parse, FUNCTIONS } from './formula.js';
 import { priceLine, money, num, RESERVED, FIELD_TYPES } from './pricing.js';
 import { UNITS, clone } from './lines.js';
+import { buildAreaFormula, buildPriceFormula, readable, slugKey, sameFormula } from './formula-assist.js';
 
 const KEY = /^[a-z][a-z0-9_]{0,30}$/;
-const slugKey = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^(\d)/, 'n$1').slice(0, 30);
 
 /**
  * Admin product designer: inputs, constants, formulas and a live test panel.
@@ -18,6 +18,10 @@ export default (config) => ({
     types: FIELD_TYPES,
     typeLabels: { number: 'Number', counter: 'Counter (+ / −)', dimension: 'Length with unit', select: 'Choice list' },
     test: { inputs: {}, qty: 1, coating: null, material: null, design: null, addon: null },
+    autoArea: false,
+    keypad: [['+', '+'], ['−', '-'], ['×', '*'], ['÷', '/'], ['(', '('], [')', ')'], ['if( , , )', 'if(area > 100, 0.9, 1)'], ['max(0, …)', 'max(0, '], ['round( , 0)', 'round('], ['> 100', '> 100']],
+    part: { label: '', size: '', count: 1 },
+    priceHelper: { minArea: '', discountAbove: '', discountPct: 10, extra: '' },
     money,
     num,
 
@@ -28,6 +32,80 @@ export default (config) => ({
         this.test.material = config.defaults.material ?? this.rates.materials[0]?.id ?? null;
         this.test.design = config.defaults.design ?? this.rates.designs[0]?.id ?? null;
         this.resetTestInputs();
+        // Stay in automatic mode while the saved formula is the one we would build.
+        this.autoArea = !this.def.area_formula || sameFormula(this.def.area_formula, this.autoAreaFormula);
+    },
+
+    // ---------- formula automation ----------
+    get autoAreaFormula() {
+        return buildAreaFormula(this.def.fields, this.def.constants);
+    },
+
+    /** Called from x-effect: keeps the area formula in step with the inputs. */
+    syncArea() {
+        if (!this.autoArea) return;
+        const f = this.autoAreaFormula;
+        if (!sameFormula(f, this.def.area_formula)) this.def.area_formula = f;
+    },
+
+    sameAsAuto() {
+        return sameFormula(this.def.area_formula, this.autoAreaFormula);
+    },
+
+    useAutoArea() {
+        this.autoArea = true;
+        this.def.area_formula = this.autoAreaFormula;
+    },
+
+    readable(which) {
+        const src = which === 'area' ? this.def.area_formula : this.def.price_formula;
+        return readable(src, this.def.fields, this.def.constants);
+    },
+
+    /** One click: a counted part with its standard size, e.g. "Ottoman, 6 sq ft". */
+    addPart() {
+        const label = this.part.label.trim();
+        const size = Number(this.part.size);
+        if (!label || !(size > 0)) return;
+        let base = slugKey(label).slice(0, 20) || 'part';
+        if (!/s$/.test(base)) base += 's';
+        const taken = (k) => this.names.includes(k) || RESERVED.includes(k) || FUNCTIONS.includes(k);
+        let key = base;
+        let sizeKey = `${base.replace(/s$/, '')}_size`;
+        for (let n = 2; taken(key) || taken(sizeKey); n++) {
+            key = `${base}_${n}`;
+            sizeKey = `${key}_size`;
+        }
+        this.def.fields.push({ key, label, type: 'counter', default: Math.max(0, Number(this.part.count) || 0), min: 0, help: '', customer: true, options: [] });
+        this.def.constants.push({ key: sizeKey, label: `${label} size (${this.def.measure_unit || 'sq ft'})`, value: size });
+        if (!this.autoArea) {
+            const cur = (this.def.area_formula || '').trim();
+            this.def.area_formula = cur && cur !== '0' ? `${cur} + ${key} * ${sizeKey}` : `${key} * ${sizeKey}`;
+        }
+        this.part = { label: '', size: '', count: 1 };
+        this.resetTestInputs();
+    },
+
+    applyPricePreset(name) {
+        const presets = {
+            standard: buildPriceFormula({ usesCoating: true }),
+            fixed: buildPriceFormula({ usesCoating: false }),
+        };
+        if (name === 'fixed') this.def.uses_coating = false;
+        if (name === 'standard') this.def.uses_coating = true;
+        this.def.price_formula = presets[name];
+    },
+
+    buildPrice() {
+        this.def.price_formula = buildPriceFormula({ usesCoating: this.def.uses_coating, ...this.priceHelper });
+    },
+
+    /** Operator keypad: append text to a formula, spaced. */
+    typeOp(which, text) {
+        const k = which === 'area' ? 'area_formula' : 'price_formula';
+        if (which === 'area') this.autoArea = false;
+        const cur = (this.def[k] || '').trimEnd();
+        this.def[k] = cur ? `${cur} ${text}` : text;
     },
 
     resetTestInputs() {
@@ -78,6 +156,7 @@ export default (config) => ({
 
     insert(which, name) {
         const k = which === 'area' ? 'area_formula' : 'price_formula';
+        if (which === 'area') this.autoArea = false;
         const cur = (this.def[k] || '').trimEnd();
         this.def[k] = cur ? `${cur} ${/[\d)a-z_]$/i.test(cur) ? '* ' : ''}${name}` : name;
     },
@@ -135,6 +214,7 @@ export default (config) => ({
         }
         const def = clone(this.def);
         def.fields = def.fields.map(({ _keyTouched, ...f }) => f);
+        if (this.autoArea) def.area_formula = this.autoAreaFormula;
         event.target.querySelector('input[name=definition]').value = JSON.stringify(def);
         event.target.submit();
     },

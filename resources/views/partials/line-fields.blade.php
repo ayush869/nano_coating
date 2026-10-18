@@ -13,9 +13,9 @@
             {{-- counter --}}
             <template x-if="f.type === 'counter'">
                 <div class="flex items-center gap-1">
-                    <button type="button" class="btn h-10 w-10 shrink-0 px-0 text-lg" @click="step(line, f.key, -1, f.min ?? 0)">−</button>
+                    <button type="button" class="btn h-10 w-10 shrink-0 px-0 text-lg" @click="stepInput(line, f.key, -1, f.min ?? 0)">−</button>
                     <input class="input h-10 text-center" type="number" inputmode="numeric" step="1" :min="f.min ?? 0" :max="f.max ?? null" x-model.number="line.inputs[f.key]">
-                    <button type="button" class="btn h-10 w-10 shrink-0 px-0 text-lg" @click="step(line, f.key, 1, f.min ?? 0)">+</button>
+                    <button type="button" class="btn h-10 w-10 shrink-0 px-0 text-lg" @click="stepInput(line, f.key, 1, f.min ?? 0)">+</button>
                 </div>
             </template>
 

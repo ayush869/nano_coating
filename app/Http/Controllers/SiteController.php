@@ -34,7 +34,7 @@ class SiteController extends Controller
             'services' => $this->services()->get(),
             'products' => $service->products->map(fn (Product $p) => [
                 'product' => $p,
-                'image' => Media::url($p->image_path),
+                'image' => Media::url($p->image_path) ?? Media::url($service->image_path),
                 'typical' => $this->typical($p, $card),
             ]),
         ]);

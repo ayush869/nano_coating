@@ -7,8 +7,8 @@
     <p class="mb-4 text-sm text-slate-500">Pick a starting point. You can change every input and formula afterwards.</p>
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($templates as $key => $t)
-            <a href="{{ route('admin.products.create', ['template' => $key, 'service' => request('service')]) }}" class="card card-body hover:border-brand-600">
-                <div class="font-semibold">{{ $t['label'] }}</div>
+            <a href="{{ route('admin.products.create', ['template' => $key, 'service' => request('service')]) }}" class="card card-body transition hover:-translate-y-0.5 hover:border-brand-600 hover:shadow-md">
+                <div class="font-semibold text-slate-900">{{ $t['label'] }}</div>
                 <div class="mt-1 text-sm text-slate-500">{{ $t['hint'] }}</div>
                 <div class="mt-2 font-mono text-[11px] text-slate-500">{{ $t['measure_unit'] }} = {{ $t['area_formula'] }}</div>
             </a>
@@ -30,7 +30,7 @@
 @endphp
 <form method="post" enctype="multipart/form-data"
       action="{{ $product->exists ? route('admin.products.update', $product) : route('admin.products.store') }}"
-      x-data="productDesigner(@js($config))" @submit.prevent="submit($event)" x-cloak>
+      x-data="productDesigner(@js($config))" x-effect="syncArea()" @submit.prevent="submit($event)" x-cloak>
     @csrf
     @if ($product->exists) @method('PUT') @endif
     <input type="hidden" name="definition">
@@ -148,6 +148,17 @@
                     <button type="button" class="btn btn-sm" @click="addField('select')">+ Choice list</button>
                     <button type="button" class="btn btn-sm" @click="addField('number')">+ Number</button>
                 </div>
+
+                <div class="mt-4 rounded-lg border border-dashed border-brand-600/40 bg-brand-50/60 p-3">
+                    <div class="text-sm font-medium text-brand-800">Quick add a counted part</div>
+                    <p class="mb-2 text-xs text-slate-600">E.g. “Ottoman”, 6 <span x-text="def.measure_unit || 'sq ft'"></span> each. Creates the counter, its size and the formula term in one go.</p>
+                    <div class="flex flex-wrap items-end gap-2">
+                        <div class="min-w-40 flex-1"><label class="label">Part name</label><input class="input" x-model="part.label" placeholder="e.g. Ottoman" @keydown.enter.prevent="addPart()"></div>
+                        <div class="w-32"><label class="label">Size of one (<span x-text="def.measure_unit || 'sq ft'"></span>)</label><input class="input" type="number" step="any" min="0" x-model="part.size" @keydown.enter.prevent="addPart()"></div>
+                        <div class="w-24"><label class="label">Default count</label><input class="input" type="number" min="0" x-model="part.count"></div>
+                        <button type="button" class="btn btn-primary" :disabled="!part.label.trim() || !(Number(part.size) > 0)" @click="addPart()">Add part</button>
+                    </div>
+                </div>
             </section>
 
             {{-- Constants --}}
@@ -177,23 +188,64 @@
                     <p class="text-xs text-slate-500">Use + − * / ^, brackets, comparisons (&lt; &gt; == …) and min(), max(), round(x, 2), ceil(), floor(), abs(), sqrt(), if(condition, then, else). Click a name to insert it.</p>
                 </div>
                 <div>
-                    <label class="label">Area formula → result in <span x-text="def.measure_unit || 'units'"></span></label>
-                    <textarea class="input font-mono text-sm" rows="2" x-model="def.area_formula" :class="formulaError('area') && 'border-red-400'"></textarea>
+                    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <label class="label mb-0">Area formula → result in <span x-text="def.measure_unit || 'units'"></span></label>
+                        <label class="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
+                               :class="autoArea ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-slate-300 text-slate-600'">
+                            <input type="checkbox" class="sr-only" :checked="autoArea" @change="$event.target.checked ? useAutoArea() : (autoArea = false)">
+                            <span class="relative inline-block h-4 w-7 rounded-full transition" :class="autoArea ? 'bg-brand-600' : 'bg-slate-300'">
+                                <span class="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all" :class="autoArea ? 'left-3.5' : 'left-0.5'"></span>
+                            </span>
+                            Build automatically from inputs
+                        </label>
+                    </div>
+                    <div x-show="autoArea" class="mb-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
+                        Automatic: parts with a matching size are added up (seats × seat size + …), lengths, choices and other values multiply, and inputs named “openings” or “deduct…” are subtracted. Edit the formula to take over by hand.
+                    </div>
+                    <div x-show="!autoArea && !sameAsAuto()" class="mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                        <span>Suggested from your inputs: <code class="font-mono" x-text="autoAreaFormula"></code></span>
+                        <button type="button" class="link" @click="useAutoArea()">Use it</button>
+                    </div>
+                    <textarea class="input font-mono text-sm" rows="2" x-model="def.area_formula" @input="autoArea = false" :class="formulaError('area') && 'border-red-400'"></textarea>
                     <p class="mt-1 text-xs text-red-700" x-show="formulaError('area')" x-text="formulaError('area')"></p>
+                    <p class="mt-1 text-xs text-slate-600" x-show="!formulaError('area') && readable('area')"><span class="font-medium">In words:</span> <span x-text="readable('area')"></span></p>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        <template x-for="op in keypad" :key="op[0]"><button type="button" class="rounded border border-slate-200 bg-white px-2 py-0.5 font-mono text-xs hover:border-brand-600" @click="typeOp('area', op[1])" x-text="op[0]"></button></template>
+                    </div>
                     <div class="mt-1 flex flex-wrap gap-1">
                         <template x-for="n in names" :key="n"><button type="button" class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] hover:bg-brand-100" @click="insert('area', n)" x-text="n"></button></template>
                     </div>
                 </div>
                 <div>
                     <label class="label">Price formula → price of one item, before quantity</label>
+                    <div class="mb-2 flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm" @click="applyPricePreset('standard')">Rate card: area × rate × material × design</button>
+                        <button type="button" class="btn btn-sm" @click="applyPricePreset('fixed')">Fixed ₹ per unit: area × rate</button>
+                    </div>
                     <textarea class="input font-mono text-sm" rows="2" x-model="def.price_formula" :class="formulaError('price') && 'border-red-400'"></textarea>
                     <p class="mt-1 text-xs text-red-700" x-show="formulaError('price')" x-text="formulaError('price')"></p>
+                    <p class="mt-1 text-xs text-slate-600" x-show="!formulaError('price') && readable('price')"><span class="font-medium">In words:</span> <span x-text="readable('price')"></span></p>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        <template x-for="op in keypad" :key="op[0]"><button type="button" class="rounded border border-slate-200 bg-white px-2 py-0.5 font-mono text-xs hover:border-brand-600" @click="typeOp('price', op[1])" x-text="op[0]"></button></template>
+                    </div>
                     <div class="mt-1 flex flex-wrap gap-1">
                         <template x-for="n in ['area', 'rate', 'material', 'design', 'coating', 'addon', 'base_rate', ...names]" :key="n">
                             <button type="button" class="rounded px-1.5 py-0.5 font-mono text-[11px]" :class="['area','rate','material','design','coating','addon','base_rate'].includes(n) ? 'bg-brand-100 text-brand-800' : 'bg-slate-100'" @click="insert('price', n)" x-text="n"></button>
                         </template>
                     </div>
                     <p class="mt-1 text-[11px] text-slate-500"><b>area</b> = result above · <b>rate</b> = coating + add-on ₹ (or the fixed rate) · <b>material</b>, <b>design</b> = factors · <b>coating</b>, <b>addon</b> = their ₹ rates separately.</p>
+
+                    <div class="mt-3 rounded-lg border border-dashed border-brand-600/40 bg-brand-50/60 p-3">
+                        <div class="text-sm font-medium text-brand-800">Price rules, no formula typing</div>
+                        <p class="mb-2 text-xs text-slate-600">Fill in what you need, leave the rest blank, then build. Uses <span x-text="def.uses_coating ? 'the rate card (coating, material, design)' : 'the fixed rate'"></span>.</p>
+                        <div class="grid gap-2 sm:grid-cols-4">
+                            <div><label class="label">Bill at least (<span x-text="def.measure_unit || 'units'"></span>)</label><input class="input" type="number" min="0" step="any" x-model="priceHelper.minArea" placeholder="e.g. 10"></div>
+                            <div><label class="label">Discount above (<span x-text="def.measure_unit || 'units'"></span>)</label><input class="input" type="number" min="0" step="any" x-model="priceHelper.discountAbove" placeholder="e.g. 500"></div>
+                            <div><label class="label">Discount %</label><input class="input" type="number" min="0" max="100" step="any" x-model="priceHelper.discountPct"></div>
+                            <div><label class="label">Extra ₹ per item</label><input class="input" type="number" min="0" step="any" x-model="priceHelper.extra" placeholder="e.g. 100"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm mt-2" @click="buildPrice()">Build price formula</button>
+                    </div>
                 </div>
             </section>
 

@@ -150,7 +150,7 @@ export function lineHelpers(card) {
             return (field.options || []).find((o) => Number(o.value) === Number(value))?.label ?? value;
         },
 
-        step(line, key, delta, min = 0) {
+        stepInput(line, key, delta, min = 0) {
             line.inputs[key] = Math.max(min, (Number(line.inputs[key]) || 0) + delta);
         },
 

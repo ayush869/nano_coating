@@ -87,6 +87,14 @@ class PdfRenderer
         if (! $disk->exists($path)) {
             return null;
         }
+        if (! function_exists('imagecreatefromstring')) {
+            // No GD: inline the original file (dompdf reads JPEG and PNG itself).
+            $mime = @getimagesizefromstring($disk->get($path))['mime'] ?? null;
+
+            return in_array($mime, ['image/jpeg', 'image/png'], true)
+                ? 'data:'.$mime.';base64,'.base64_encode($disk->get($path))
+                : null;
+        }
         $img = @imagecreatefromstring($disk->get($path));
         if (! $img) {
             return null;
@@ -104,7 +112,6 @@ class PdfRenderer
             imagejpeg($img, null, 80);
         }
         $data = ob_get_clean();
-        imagedestroy($img);
 
         return 'data:image/'.($isPng ? 'png' : 'jpeg').';base64,'.base64_encode($data);
     }

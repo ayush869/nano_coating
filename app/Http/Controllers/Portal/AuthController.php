@@ -63,7 +63,7 @@ class AuthController extends Controller
             return redirect()->route('portal.welcome');
         }
 
-        return redirect()->intended(route('portal.dashboard'));
+        return $this->intendedWithin('account', route('portal.dashboard'));
     }
 
     public function showProfile(Request $request)
@@ -82,7 +82,7 @@ class AuthController extends Controller
         ]);
         $request->user('customer')->update($data);
 
-        return redirect()->intended(route('portal.dashboard'))->with('ok', 'Profile saved.');
+        return $this->intendedWithin('account', route('portal.dashboard'))->with('ok', 'Profile saved.');
     }
 
     public function logout(Request $request)

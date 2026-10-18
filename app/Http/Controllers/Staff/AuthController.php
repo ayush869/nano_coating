@@ -26,7 +26,7 @@ class AuthController extends Controller
         }
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        return $this->intendedWithin('staff', route('dashboard'));
     }
 
     public function logout(Request $request)

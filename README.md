@@ -16,7 +16,7 @@ npm install && npm run build
 cp .env.example .env          # then set DB_* if not XAMPP defaults
 php artisan key:generate
 # create the database once, e.g. in phpMyAdmin: nano_coating (utf8mb4)
-php artisan migrate --seed    # tables + rate card + 20 starter products + demo data
+php artisan migrate --seed    # tables + rate card + 20 starter products + one admin
 ```
 
 Then open:
@@ -29,27 +29,28 @@ Then open:
 
 Or run `php artisan serve` and use `http://127.0.0.1:8000` (set `APP_URL` to match).
 
-### Logins (demo data)
+### Login
+
+A fresh install has one admin account and the starter products (with their formulas and photos). There are no demo customers, quotes or payments.
 
 | Staff login | Password | Role |
 |---|---|---|
-| admin@example.com | password | Admin: everything, including products, formulas, rates, users |
-| sales@example.com | password | Sales: requests, quotes, customers, payments, invoices, reports |
-| tech@example.com, tech2@example.com | password | Technician: assigned visits, quotes for them, assigned jobs |
+| admin@gmail.com | 123456 | Admin: everything, including products, formulas, rates, users |
 
-**Customers** sign in with their mobile number. While `OTP_SHOW_ON_SCREEN=true`, the code appears on the screen, so you can test without an SMS provider. Each demo customer is at a different stage:
+Add sales and technician accounts in Admin → Users.
 
-| Mobile | Stage |
-|---|---|
-| 9822011223 | New request, waiting for a technician |
-| 9845098450 | Visit scheduled (Karnataka, so IGST applies) |
-| 9930099300 | Quotation sent: **accept and pay the advance** |
-| 9881098810 | Advance paid, job scheduled |
-| 9769097690 | Work done, invoice issued: **pay the balance** |
+**Customers** sign in with their mobile number. While `OTP_SHOW_ON_SCREEN=true`, the code appears on the screen, so you can test without an SMS provider. Any 10-digit mobile number creates a new customer account.
 
-Any other 10-digit mobile number creates a new customer account.
+### Designing products (formulas)
 
-**Before going live:** change the staff passwords, replace the company profile, GSTIN and bank details (Admin → Company profile), set `OTP_SHOW_ON_SCREEN=false`, connect an SMS provider, and add Razorpay live keys.
+Admin → Products & formulas → New product. Pick a starting point, then:
+
+- **Build automatically from inputs** (on by default): the area formula follows the inputs as you add them. Counted parts with a matching size are added up (`seats * seat_sqft + …`), lengths and choices multiply, and inputs named `openings` or `deduct…` are subtracted.
+- **Quick add a counted part**: type "Ottoman, 6 sq ft" and the counter, its size and the formula term are created in one click.
+- **Price rules, no formula typing**: minimum billed area, a volume discount and an extra charge per item build the price formula for you.
+- Every formula is also shown **in words**, and the **Try it** panel prices it live.
+
+**Before going live:** change the admin password, replace the company profile, GSTIN and bank details (Admin → Company profile), set `OTP_SHOW_ON_SCREEN=false`, connect an SMS provider, and add Razorpay live keys.
 
 ## Payments (Razorpay)
 
